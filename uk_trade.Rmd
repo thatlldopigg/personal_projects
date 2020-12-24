@@ -1,0 +1,294 @@
+---
+title: "UKtrade"
+author: "r/thatlldo_pig_"
+date: "12/22/2020"
+output: html_document
+---
+
+```{r load libraries, message=F}
+library(ggplot2)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(rgeos)
+library(tidyverse)
+library(ggspatial)
+library(cartogram)
+library(ggthemes)
+library(rnaturalearthhires)
+library(ggrepel)
+library(gridExtra)
+library(extrafont)
+library(readxl)
+library(grid)
+library(leaflet)
+library(htmltools)
+library(htmlwidgets)
+library(rgdal)
+library(dplyr)
+loadfonts(device = "win")
+
+
+```
+
+```{r load data}
+proj <- "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
+
+uk_import <- read_excel("C:/Users/mwill/OneDrive - Harvard University/Personal Projects/UKTrade/allcountriesoct2020final.xlsx", 
+                        sheet = "Annual Imports", 
+                        range = "A5:Z241")
+
+uk_export <- read_excel("C:/Users/mwill/OneDrive - Harvard University/Personal Projects/UKTrade/allcountriesoct2020final.xlsx", 
+                        sheet = "Annual Exports", 
+                        range = "A5:Z241")
+
+world <- ne_countries(scale = 50, returnclass = "sf") %>%
+  mutate(abbr = postal)
+
+uk_import_2019 <- uk_import[,c(1:3,26)]
+uk_export_2019 <- uk_export[,c(1:3,26)]
+
+uk_2019 <- left_join(uk_import_2019, uk_export_2019, by = "abbr")
+uk_2019 <- uk_2019[,c(1:4,7)]
+
+colnames(uk_2019) <- c("abbr","name","EU","import_2019","export_2019")
+
+uk_2019$import_2019 <- as.numeric(as.character(uk_2019$import_2019))
+uk_2019$export_2019 <- as.numeric(as.character(uk_2019$export_2019))
+
+uk_2019 <- uk_2019[which(is.na(uk_2019$import_2019)==F),]
+
+
+world[which(world$postal == "SYR"), 65] <- "SY" 
+world[which(world$postal == "SW"), 65] <- "SZ"
+world[which(world$postal == "RSM"), 65] <- "SM"
+world[which(world$postal == "RUS"), 65] <- "RU"
+world[which(world$postal == "N"), 65] <- "NO"
+world[which(world$postal == "PAL"), 65] <- "PS"
+world[which(world$postal == "FL"), 65] <- "LI"
+world[which(world$postal == "KO"), 65] <- "XK"
+world[which(world$name == "Jordan"), 65] <- "JO"
+world[which(world$name == "Japan"), 65] <- "JP"
+world[which(world$name == "Jamaica"), 65] <- "JM"
+world[which(world$name == "Israel"), 65] <- "IL"
+world[which(world$name == "Iraq"), 65] <- "IQ"
+world[which(world$name == "Iran"), 65] <- "IR"
+world[which(world$name == "Indonesia"), 65] <- "ID"
+world[which(world$name == "India"), 65] <- "IN"
+world[which(world$name == "Dem. Rep. Congo"), 65] <- "CD"
+world[which(world$name == "Bosnia and Herz."), 65] <- "BA"
+world[which(world$name == "Armenia"), 65] <- "AM"
+world[which(world$name == "Andorra"), 65] <- "AD"
+world[which(world$name == "Sweden"), 65] <- "SE"
+world[which(world$name == "Spain"), 65] <- "ES"
+world[which(world$name == "Slovenia"), 65] <- "SI"
+world[which(world$name == "Portugal"), 65] <- "PT"
+world[which(world$name == "Malta"), 65] <- "MT"
+world[which(world$name == "Luxembourg"), 65] <- "LU"
+world[which(world$name == "Italy"), 65] <- "IT"
+world[which(world$name == "Ireland"), 65] <- "IE"
+world[which(world$name == "Germany"), 65] <- "DE"
+world[which(world$name == "France"), 65] <- "FR"
+world[which(world$name == "Finland"), 65] <- "FI"
+world[which(world$name == "Estonia"), 65] <- "EE"
+world[which(world$name == "Belgium"), 65] <- "BE"
+world[which(world$name == "Austria"), 65] <- "AT"
+
+world[which(world$name == "Czech Rep."), 18] <- "Czech Republic"
+world[which(world$name == "Antigua and Barb."), 18] <- "Antigua & Barbuda"
+world[which(world$name == "Bosnia and Herz."), 18] <- "Bosnia & Herzegovina"
+world[which(world$name == "British Virgin Is."), 18] <- "British Virgin Islands"
+world[which(world$name == "Dem. Rep. Congo"), 18] <- "Congo (Democratic Republic)"
+world[which(world$name == "Congo"), 18] <- "Congo (Republic)"
+world[which(world$name == "Dominican Rep."), 18] <- "Dominican Republic"
+world[which(world$name == "Eq. Guinea"), 18] <- "Equatorial Guinea"
+world[which(world$name == "Faeroe Is."), 18] <- "Faroe Islands"
+world[which(world$name == "Macedonia"), 18] <- "FYR Macedonia"
+world[which(world$name == "Côte d'Ivoire"), 18] <- "Ivory Coast"
+world[which(world$name == "Lao PDR"), 18] <- "Laos"
+world[which(world$name == "Korea"), 18] <- "South Korea"
+world[which(world$name == "Trinidad and Tobago"), 18] <- "Trinidad & Tobago"
+world[which(world$name == "United States"), 18] <- "United States inc Puerto Rico"
+world[which(world$name == "Central African Rep."), 18] <- "Central African Republic"
+world[which(world$name == "Falkland Is."), 18] <- "Falkland Islands"
+world[which(world$name == "S. Sudan"), 18] <- "South Sudan"
+world[which(world$name == "Congo"), 18] <- "Congo (Republic)"
+world[which(world$name == "Congo"), 18] <- "Congo (Republic)"
+
+
+uk_2019_world <- st_as_sf(left_join(uk_2019, world, by = "name"))
+
+world_proj <- uk_2019_world %>%
+  st_transform(crs = proj)
+
+world_proj <- world_proj[which(is.na(world_proj$scalerank) == F),]
+world_proj <- world_proj[-which(world_proj$name == "Antarctica"),]
+
+world_proj$import_2019 <- world_proj$import_2019 + 1
+world_proj$export_2019 <- world_proj$export_2019 + 1
+
+world_proj$EU <- ifelse(world_proj$abbr.x == "NO"|
+                        world_proj$abbr.x == "IS"|
+                        world_proj$abbr.x == "LI", .8, world_proj$EU)
+
+
+```
+
+
+```{r cartogram, fig.width=13, fig.height=13, warning=F}
+#cart_cont_import <- world_proj %>%
+ # cartogram_cont("import_2019", 50)
+
+#cart_cont_import2 <- world_proj %>%
+ # cartogram_cont("import_2019", 80)
+
+
+#cart_cont_export <- world_proj %>%
+ # cartogram_cont("export_2019", 25)
+
+cart_dorl <- world_proj %>%
+  cartogram_dorling("import_2019")
+
+cart_ncont <- world_proj %>%
+  cartogram_ncont("import_2019")
+
+ggplot(world_proj) +
+  geom_sf(aes(fill = EU), color = "white", show.legend = F) +
+  scale_fill_viridis_b() +
+  theme_map()
+
+imports <- ggplot(cart_cont_import,
+       aes(fill = as.character(EU))) +
+  geom_sf(color = "black", size = .01, show.legend = T) +
+  geom_label(data = cart_cont_import, 
+             aes(y = st_coordinates(st_centroid(cart_cont_import))[,2],
+                 x = st_coordinates(st_centroid(cart_cont_import))[,1],
+                 label = ifelse(cart_cont_import$abbr.x == "US", "United States",
+                         ifelse(cart_cont_import$abbr.x == "AE", "UAE",
+                         ifelse(cart_cont_import$abbr.x == "HK", "HK",
+                         ifelse(import_2019>3000, name, NA))))), 
+             show.legend = F, 
+             nudge_y = ifelse(cart_cont_import$abbr.x == "US"|
+                              cart_cont_import$abbr.x == "NO", -1500000, 
+                       ifelse(cart_cont_import$abbr.x == "IN"|
+                              cart_cont_import$abbr.x == "TH", -900000, 0)), 
+             nudge_x = ifelse(cart_cont_import$abbr.x == "US",  1300000, 0),
+             fill = NA, label.size = NA, color = "white") + 
+  labs(title = "UK 2019 Imports", 
+       subtitle = "Labeled countries exported >£3B in goods to the UK in 2019") +
+  scale_fill_viridis_d(end = .75, begin = .1,
+                       name = "Country Status",
+                       label = c("Non-EU","Non-EU but EEA","EU")) +
+  theme_map() +
+  theme(plot.background = element_rect(fill = "black"),
+        title = element_text(color = "white", size = 20, family = "Trebuchet MS"),
+        plot.subtitle = element_text(face = "italic", size = 15),
+        legend.background = element_rect(fill = alpha("white",.6), color = "white"),
+        legend.text = element_text(family = "Trebuchet MS", color = "white", size = 15))
+
+exports <- ggplot(cart_cont_export,
+       aes(fill = as.character(EU))) +
+  geom_sf(color = "black", size = .01, show.legend = T) +
+  geom_label(data = cart_cont_export, 
+             aes(y = st_coordinates(st_centroid(cart_cont_export))[,2],
+                 x = st_coordinates(st_centroid(cart_cont_export))[,1],
+                 label = ifelse(cart_cont_export$abbr.x == "US", "United States",
+                         ifelse(cart_cont_export$abbr.x == "AE", "UAE",
+                         ifelse(cart_cont_export$abbr.x == "HK", "HK",
+                         ifelse(export_2019>3000, name, NA))))), 
+             show.legend = F, 
+             nudge_y = ifelse(cart_cont_export$abbr.x == "US"|
+                              cart_cont_export$abbr.x == "NO", -1300000, 
+                       ifelse(cart_cont_export$abbr.x == "IN"|
+                              cart_cont_export$abbr.x == "TH", -900000, 0)), 
+             nudge_x = ifelse(cart_cont_export$abbr.x == "US",  1300000, 0),
+             fill = NA, label.size = NA, color = "white") + 
+  labs(title = "UK 2019 Exports", 
+       subtitle = "Labeled countries imported >£3B in goods from the UK in 2019") +
+  scale_fill_viridis_d(end = .75, begin = .1,
+                       name = "Country Status",
+                       label = c("Non-EU","Non-EU but EEA","EU")) +
+  theme_map() +
+  theme(plot.background = element_rect(fill = "black"),
+        title = element_text(color = "white", size = 20, family = "Trebuchet MS"),
+        plot.subtitle = element_text(face = "italic", size = 15),
+        legend.background = element_rect(fill = alpha("white",.6), color = "white"),
+        legend.text = element_text(family = "Trebuchet MS", color = "white", size = 15))
+
+#grid.arrange(imports, exports, nrow = 2, ncol = 1)
+
+imports
+exports
+
+
+ggplot(cart_dorl,
+       aes(fill = EU)) +
+  geom_sf(data = world_proj, fill = NA) +
+  geom_sf(color = "black", size = .01, show.legend = F) +
+  scale_fill_viridis_b() +
+  theme_map()
+
+
+ggplot(cart_ncont) +
+  geom_sf(aes(fill = EU), show.legend = F) +
+  theme_map()
+
+
+
+```
+
+```{r interactive map}
+
+import_leaflet <- cart_cont_import %>%
+  st_transform(crs = "+proj=longlat +datum=WGS84")
+
+import_leaflet$EUtext <- ifelse(import_leaflet$EU == 0, "Non-EU",
+                         ifelse(import_leaflet$EU == .8, "Non-EU but EEA",
+                         ifelse(import_leaflet$EU == 1, "EU", "")))
+
+import_leaflet$describe <- paste("<p><b>",import_leaflet$name_long,
+                                        "</b></p><i>Value Exported to UK 2019:</i><b> £",
+                                        prettyNum((import_leaflet$import_2019-1),
+                                                  big.mark = ","),"million</b><br>
+                                 <i>Value Imported from UK 2019:</i><b> £",
+                                        prettyNum((import_leaflet$export_2019-1),
+                                                  big.mark = ","),"million</b>") %>%
+  lapply(htmltools::HTML)
+
+pal <- colorFactor(palette = c("#5dc863", "#482576", "#257989"), 
+                    domain = import_leaflet$EUtext, na.color = "#000000")
+
+
+uk_trade <- leaflet(import_leaflet) %>%
+  addPolygons(stroke = T, 
+              color = "black", 
+              weight = .4, 
+              fillColor = pal(import_leaflet$EUtext), 
+              fillOpacity = 1, 
+              highlightOptions = highlightOptions(fillOpacity = 1, fillColor = "#fcdd1d"),
+              popup = ~describe) %>%
+  addControl("UK Trade 2019", position = "topright") %>%
+  addLegend(pal = pal,
+            title = "Country Status",
+            values = ~EUtext, 
+            position = "bottomright") %>%
+  setView(lng = 0, lat = 30, zoom = 2)
+
+uk_trade
+
+saveWidget(uk_trade, "C:/Users/mwill/OneDrive - Harvard University/2020 - Fall/Spatial Analysis/Git/mwillisjackson-vis/Portfolio/uk_trade.html")
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+

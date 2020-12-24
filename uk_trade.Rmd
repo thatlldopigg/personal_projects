@@ -34,11 +34,11 @@ loadfonts(device = "win")
 ```{r load data}
 proj <- "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs"
 
-uk_import <- read_excel("C:/Users/mwill/OneDrive - Harvard University/Personal Projects/UKTrade/allcountriesoct2020final.xlsx", 
+uk_import <- read_excel("Personal Projects/UKTrade/allcountriesoct2020final.xlsx", 
                         sheet = "Annual Imports", 
                         range = "A5:Z241")
 
-uk_export <- read_excel("C:/Users/mwill/OneDrive - Harvard University/Personal Projects/UKTrade/allcountriesoct2020final.xlsx", 
+uk_export <- read_excel("Personal Projects/UKTrade/allcountriesoct2020final.xlsx", 
                         sheet = "Annual Exports", 
                         range = "A5:Z241")
 
@@ -275,8 +275,6 @@ uk_trade <- leaflet(import_leaflet) %>%
   setView(lng = 0, lat = 30, zoom = 2)
 
 uk_trade
-
-saveWidget(uk_trade, "C:/Users/mwill/OneDrive - Harvard University/2020 - Fall/Spatial Analysis/Git/mwillisjackson-vis/Portfolio/uk_trade.html")
 
 
 
